@@ -9,14 +9,13 @@ import javassist.NotFoundException;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
+import java.util.Map;
 
 public class PerformanceTransformer implements ClassFileTransformer {
-    private final String targetClassName;
-    private final ClassLoader classLoader;
+    private final Map<String, ClassMetaData> classMetaData;
 
-    public PerformanceTransformer(String targetClassName, ClassLoader classLoader) {
-        this.targetClassName = targetClassName;
-        this.classLoader = classLoader;
+    public PerformanceTransformer(Map<String, ClassMetaData> classMetaData) {
+        this.classMetaData = classMetaData;
     }
 
     @Override
@@ -26,16 +25,18 @@ public class PerformanceTransformer implements ClassFileTransformer {
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) {
         byte[] byteCode = classfileBuffer;
-        String finalTargetClassName = this.targetClassName.replaceAll("\\.", "/");
-        if (!className.equals(finalTargetClassName)) {
+        String finalTargetClassName = className.replaceAll("/", "\\.");
+        //System.out.println("Looking for class Name: " + finalTargetClassName);
+        if (!classMetaData.containsKey(finalTargetClassName)) {
             return byteCode;
         }
+        System.out.println("Found Class Name in Map: " + finalTargetClassName);
 
-        if (loader.equals(classLoader)) {
+        if (loader.equals(classMetaData.get(finalTargetClassName).getClassLoader())) {
             try {
                 System.out.println("Found class: " + finalTargetClassName);
                 ClassPool classPool = ClassPool.getDefault();
-                CtClass ctClass = classPool.get(this.targetClassName);
+                CtClass ctClass = classPool.get(finalTargetClassName);
                 CtMethod[] declaredMethods = ctClass.getDeclaredMethods();
                 for (CtMethod method : declaredMethods) {
                     System.out.println("Method Name: " + method.getName());
@@ -58,6 +59,8 @@ public class PerformanceTransformer implements ClassFileTransformer {
             }
         } else {
             System.err.println("Unable to find class: " + finalTargetClassName);
+            System.err.println("Loader Actual: " + loader);
+            System.err.println("Loader Expected: " + classMetaData.get(finalTargetClassName));
         }
 
         return byteCode;

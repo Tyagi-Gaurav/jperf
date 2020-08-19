@@ -4,9 +4,12 @@ import java.io.IOException;
 import java.lang.instrument.Instrumentation;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 public class AgentLoader {
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -19,9 +22,10 @@ public class AgentLoader {
             System.out.println("Looking for package: " + packagePath);
             System.out.println("Classpath: " + System.getProperty("java.class.path"));
             String[] jarFiles = System.getProperty("java.class.path").split(":");
-            List<String> classArrayList = new ArrayList<>();
+
+            List<String> classesToTransform = new ArrayList<>();
+
             for (String jarfile : jarFiles) {
-                //while (resources.hasMoreElements()) {
                 JarFile jarFile = new JarFile(jarfile);
                 Enumeration<JarEntry> entries = jarFile.entries();
                 while (entries.hasMoreElements()) {
@@ -29,53 +33,67 @@ public class AgentLoader {
                     String name = x.getName();
                     if (!x.isDirectory() && name.endsWith(".class") && name.startsWith(packagePath)) {
                         name = name.replaceAll("/", "\\.").replaceAll(".class", "");
-                        System.out.println(name);
-                        transformClass(name, inst);
+                        classesToTransform.add(name);
+                        //System.out.println(name);
+                        //transformClass(name, inst);
                     }
                 }
             }
+
+            Map<String, ClassMetaData> classMetaData = transformClass(classesToTransform, inst);
+            transform(classMetaData, inst);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
 
-    private static void transformClass(
-            String className, Instrumentation instrumentation) {
+    private static Map<String, ClassMetaData> transformClass(
+            List<String> classz, Instrumentation instrumentation) {
         Class<?> targetCls = null;
         ClassLoader targetClassLoader = null;
+        Map<String, ClassMetaData> classesToTransform = new HashMap<>();
         // see if we can get the class using forName
-        try {
-            targetCls = Class.forName(className);
-            targetClassLoader = targetCls.getClassLoader();
-            transform(targetCls, targetClassLoader, instrumentation);
-            return;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        // otherwise iterate all loaded classes and find what we want
-        for (Class<?> clazz : instrumentation.getAllLoadedClasses()) {
-            if (clazz.getName().equals(className)) {
-                targetCls = clazz;
+        for(String className : classz) {
+            try {
+                targetCls = Class.forName(className);
                 targetClassLoader = targetCls.getClassLoader();
-                transform(targetCls, targetClassLoader, instrumentation);
-                return;
+                System.out.println("Adding to map: " + targetCls.getName());
+                classesToTransform.put(targetCls.getName(), new ClassMetaData(targetCls, targetClassLoader));
+                //transform(targetCls, targetClassLoader, instrumentation);
+                //return;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                throw new RuntimeException(
+                        "Failed to find class [" + className + "]");
             }
         }
-        throw new RuntimeException(
-                "Failed to find class [" + className + "]");
+
+        return classesToTransform;
+//        // otherwise iterate all loaded classes and find what we want
+//        for (Class<?> clazz : instrumentation.getAllLoadedClasses()) {
+//            if (clazz.getName().equals(className)) {
+//                targetCls = clazz;
+//                targetClassLoader = targetCls.getClassLoader();
+//                transform(targetCls, targetClassLoader, instrumentation);
+//                return;
+//            }
+//        }
+
     }
 
     private static void transform(
-            Class<?> clazz,
-            ClassLoader classLoader,
+            Map<String, ClassMetaData> classMetaData,
             Instrumentation instrumentation) {
-        PerformanceTransformer dt = new PerformanceTransformer(clazz.getName(), classLoader);
+        PerformanceTransformer dt = new PerformanceTransformer(classMetaData);
         instrumentation.addTransformer(dt, true);
         try {
-            instrumentation.retransformClasses(clazz);
+            List<Class<?>> collect = classMetaData.values().stream()
+                    .map(ClassMetaData::getClazz)
+                    .collect(Collectors.toList());
+            instrumentation.retransformClasses(collect.toArray(new Class[0]));
         } catch (Exception ex) {
             throw new RuntimeException(
-                    "Transform failed for: [" + clazz.getName() + "]", ex);
+                    "Transform failed.", ex);
         }
     }
 }

@@ -1,0 +1,41 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:6.0.0'
+    }
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+shadowJar {
+    mergeServiceFiles()
+}
+
+dependencies {
+    implementation "org.javassist:javassist:3.27.0-GA"
+}
+
+jar {
+    from {
+        configurations.implementation.collect { it.isDirectory() ? it : zipTree(it) }
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    manifest {
+        attributes "Can-Redefine-Classes" : true
+        attributes "Can-Retransform-Classes" : true
+        attributes "Premain-Class" : "com.gt.perf.agent.AgentLoader"
+        attributes "Main-Class" : "com.gt.main.ClassUnderTest"
+    }
+}

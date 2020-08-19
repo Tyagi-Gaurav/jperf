@@ -9,12 +9,10 @@ import javassist.NotFoundException;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
-import java.util.Arrays;
 
 public class PerformanceTransformer implements ClassFileTransformer {
     private final String targetClassName;
     private final ClassLoader classLoader;
-    //private final Logger
 
     public PerformanceTransformer(String targetClassName, ClassLoader classLoader) {
         this.targetClassName = targetClassName;
@@ -28,7 +26,6 @@ public class PerformanceTransformer implements ClassFileTransformer {
                             ProtectionDomain protectionDomain,
                             byte[] classfileBuffer) {
         byte[] byteCode = classfileBuffer;
-        //System.out.println("Called to transform class: " + className);
         String finalTargetClassName = this.targetClassName.replaceAll("\\.", "/");
         if (!className.equals(finalTargetClassName)) {
             return byteCode;
@@ -41,25 +38,22 @@ public class PerformanceTransformer implements ClassFileTransformer {
                 CtClass ctClass = classPool.get(this.targetClassName);
                 CtMethod[] declaredMethods = ctClass.getDeclaredMethods();
                 for (CtMethod method : declaredMethods) {
-                    if (method.getName().equals("doSomething")) {
-                        System.out.println("Method Name: " + method.getName());
-                        method.addLocalVariable("startTime", CtClass.longType);
-                        method.insertBefore("startTime = System.currentTimeMillis();");
-                        method.addLocalVariable("endTime", CtClass.longType);
-                        method.addLocalVariable("opTime", CtClass.longType);
+                    System.out.println("Method Name: " + method.getName());
+                    method.addLocalVariable("startTime", CtClass.longType);
+                    method.insertBefore("startTime = System.currentTimeMillis();");
+                    method.addLocalVariable("endTime", CtClass.longType);
+                    method.addLocalVariable("opTime", CtClass.longType);
 
-                        String endBlock = "endTime = System.currentTimeMillis();" +
-                                "opTime = (endTime - startTime)/1000;" +
-                                "System.out.println(\"Optime (In Seconds): \" + opTime);";
-                        method.insertAfter(endBlock);
-
-                        byteCode = ctClass.toBytecode();
-                        ctClass.detach();
-                        System.out.println("Changed byte code for class");
-                    }
+                    String endBlock = "endTime = System.currentTimeMillis();" +
+                            "opTime = (endTime - startTime)/1000;" +
+                            "System.out.println(\"Optime for " +  method.getName() + " (In Seconds): \" + opTime);";
+                    method.insertAfter(endBlock);
                 }
+
+                byteCode = ctClass.toBytecode();
+                ctClass.detach();
+
             } catch (NotFoundException | CannotCompileException | IOException e) {
-                System.err.println(e.getMessage());
                 e.printStackTrace();
             }
         } else {

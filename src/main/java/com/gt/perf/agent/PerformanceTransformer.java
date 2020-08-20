@@ -3,6 +3,7 @@ package com.gt.perf.agent;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
+import javassist.CtField;
 import javassist.CtMethod;
 import javassist.NotFoundException;
 
@@ -26,7 +27,6 @@ public class PerformanceTransformer implements ClassFileTransformer {
                             byte[] classfileBuffer) {
         byte[] byteCode = classfileBuffer;
         String finalTargetClassName = className.replaceAll("/", "\\.");
-        //System.out.println("Looking for class Name: " + finalTargetClassName);
         if (!classMetaData.containsKey(finalTargetClassName)) {
             return byteCode;
         }
@@ -37,18 +37,28 @@ public class PerformanceTransformer implements ClassFileTransformer {
                 System.out.println("Found class: " + finalTargetClassName);
                 ClassPool classPool = ClassPool.getDefault();
                 CtClass ctClass = classPool.get(finalTargetClassName);
+                CtClass analysisClass = classPool.get("com.gt.perf.agent.ClassRecorder");
+                CtField ctField = new CtField(analysisClass, "classRecorder", ctClass);
+//                ctClass.addField(CtField.make("private final com.gt.perf.agent.ClassRecorder classRecorder = new com.gt.perf.agent.ClassRecorder(\"" +
+//                       finalTargetClassName + "\");", ctClass));
+                //ctClass.addField(CtField.make("public java.util.List list = new java.util.ArrayList();", ctClass));
+                ctClass.addField(ctField);
                 CtMethod[] declaredMethods = ctClass.getDeclaredMethods();
                 for (CtMethod method : declaredMethods) {
-                    System.out.println("Method Name: " + method.getName());
-                    method.addLocalVariable("startTime", CtClass.longType);
-                    method.insertBefore("startTime = System.currentTimeMillis();");
-                    method.addLocalVariable("endTime", CtClass.longType);
-                    method.addLocalVariable("opTime", CtClass.longType);
+                    if (!method.getName().equals("main")) {
+                        System.out.println("Method Name: " + method.getName());
+                        method.addLocalVariable("startTime", CtClass.longType);
+                        method.insertBefore("startTime = System.currentTimeMillis();");
+                        method.addLocalVariable("endTime", CtClass.longType);
+                        method.addLocalVariable("opTime", CtClass.longType);
 
-                    String endBlock = "endTime = System.currentTimeMillis();" +
-                            "opTime = (endTime - startTime)/1000;" +
-                            "System.out.println(\"Optime for " +  method.getName() + " (In Seconds): \" + opTime);";
-                    method.insertAfter(endBlock);
+                        String endBlock = "endTime = System.currentTimeMillis();" +
+                                "classRecorder.incrementCallCount();" +
+                                "classRecorder.addCallDuration(endTime - startTime);";
+                      //  String endBlock = "list.add(Long.valueOf(endTime - startTime));";
+
+                        method.insertAfter(endBlock);
+                    }
                 }
 
                 byteCode = ctClass.toBytecode();

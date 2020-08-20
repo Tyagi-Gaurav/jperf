@@ -34,8 +34,6 @@ public class AgentLoader {
                     if (!x.isDirectory() && name.endsWith(".class") && name.startsWith(packagePath)) {
                         name = name.replaceAll("/", "\\.").replaceAll(".class", "");
                         classesToTransform.add(name);
-                        //System.out.println(name);
-                        //transformClass(name, inst);
                     }
                 }
             }
@@ -59,8 +57,6 @@ public class AgentLoader {
                 targetClassLoader = targetCls.getClassLoader();
                 System.out.println("Adding to map: " + targetCls.getName());
                 classesToTransform.put(targetCls.getName(), new ClassMetaData(targetCls, targetClassLoader));
-                //transform(targetCls, targetClassLoader, instrumentation);
-                //return;
             } catch (Exception ex) {
                 ex.printStackTrace();
                 throw new RuntimeException(
@@ -69,16 +65,6 @@ public class AgentLoader {
         }
 
         return classesToTransform;
-//        // otherwise iterate all loaded classes and find what we want
-//        for (Class<?> clazz : instrumentation.getAllLoadedClasses()) {
-//            if (clazz.getName().equals(className)) {
-//                targetCls = clazz;
-//                targetClassLoader = targetCls.getClassLoader();
-//                transform(targetCls, targetClassLoader, instrumentation);
-//                return;
-//            }
-//        }
-
     }
 
     private static void transform(
@@ -92,6 +78,7 @@ public class AgentLoader {
                     .collect(Collectors.toList());
             instrumentation.retransformClasses(collect.toArray(new Class[0]));
         } catch (Exception ex) {
+            ex.printStackTrace();
             throw new RuntimeException(
                     "Transform failed.", ex);
         }

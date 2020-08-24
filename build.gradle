@@ -4,6 +4,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.github.jengelman.gradle.plugins:shadow:6.0.0'
+        classpath 'pl.allegro.tech.build:axion-release-plugin:1.12.0'
     }
 }
 
@@ -18,14 +19,21 @@ repositories {
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'maven-publish'
+apply plugin: 'pl.allegro.tech.build.axion-release'
 
-group 'org.example'
-version '1.0-SNAPSHOT'
+group 'com.gt'
 
+project.version = scmVersion.version
 sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+}
+
+scmVersion {
+    tag {
+        prefix = 'perfAgent'
+    }
 }
 
 shadowJar {

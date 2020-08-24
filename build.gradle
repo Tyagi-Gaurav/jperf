@@ -21,7 +21,7 @@ apply plugin: 'java'
 apply plugin: 'maven-publish'
 apply plugin: 'pl.allegro.tech.build.axion-release'
 
-group 'com.gt'
+group 'com.aan.gt'
 
 project.version = scmVersion.version
 sourceCompatibility = 1.8
@@ -46,7 +46,6 @@ dependencies {
     implementation "net.bytebuddy:byte-buddy-agent:1.10.14"
 
     compileOnly "org.projectlombok:lombok:1.18.12"
-
     annotationProcessor 'org.projectlombok:lombok:1.18.12'
 }
 
@@ -63,33 +62,45 @@ jar {
     }
 }
 
-publishing {
-    publications {
-        myLibrary(MavenPublication) {
-            from components.java
-        }
-    }
+plugins {
+    id("maven-publish")
+}
 
+publishing {
     repositories {
         maven {
-            name = 'mavenCentral'
-            url = "file://${buildDir}/repo"
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/Tyagi-Gaurav/jperf")
+            credentials {
+                username = loadProperty("gpr.user") ?: System.getenv("USERNAME")
+                password = loadProperty("github.token") ?: System.getenv("TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            groupId = 'com.gt'
+            artifactId = 'jperf'
+            version = scmVersion.version
+
+            from(components.java)
         }
     }
 }
 
 release.dependsOn("loadGitHubToken")
 
-task loadGitHubToken {
+task loadGitHubToken << {
+    scmVersion.repository.customUsername = loadProperty("github.token")
+}
+
+task loadProperty(propertyName : String) {
     Properties properties = new Properties()
     File propertiesFile = new File(System.getProperty("user.home")  + '/keys/all_keys')
     propertiesFile.withInputStream {
         properties.load(it)
     }
 
-    def githubTokenProperty = "github.token"
-
-    byte[] decoded = properties."$githubTokenProperty".decodeBase64()
-    def decodedProperty = new String(decoded)
-    scmVersion.repository.customUsername = decodedProperty
+    byte[] decoded = properties."$propertyName".decodeBase64()
+    return new String(decoded)
 }

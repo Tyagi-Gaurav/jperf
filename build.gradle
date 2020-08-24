@@ -77,3 +77,23 @@ publishing {
         }
     }
 }
+
+release.dependsOn("loadGitHubToken")
+
+task loadGitHubToken << {
+    scmVersion.repository.customUsername = loadGitHubToken
+}
+
+task loadGitHubToken {
+    Properties properties = new Properties()
+    File propertiesFile = new File(System.getProperty("user.home")  + '/keys/all_keys')
+    propertiesFile.withInputStream {
+        properties.load(it)
+    }
+
+    def githubTokenProperty = "github.token"
+
+    byte[] decoded = properties."$githubTokenProperty".decodeBase64()
+    def decodedProperty = new String(decoded)
+    scmVersion.repository.customUsername = decodedProperty
+}

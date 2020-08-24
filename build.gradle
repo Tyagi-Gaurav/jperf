@@ -17,6 +17,7 @@ repositories {
 
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
+apply plugin: 'maven-publish'
 
 group 'org.example'
 version '1.0-SNAPSHOT'
@@ -51,5 +52,20 @@ jar {
         attributes "Can-Retransform-Classes" : true
         attributes "Premain-Class" : "com.gt.perf.bb.agent.AgentLoader"
         attributes "Main-Class" : "com.gt.main.ClassUnderTest"
+    }
+}
+
+publishing {
+    publications {
+        myLibrary(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'mavenCentral'
+            url = "file://${buildDir}/repo"
+        }
     }
 }

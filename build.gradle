@@ -55,52 +55,66 @@ jar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     manifest {
-        attributes "Can-Redefine-Classes" : true
-        attributes "Can-Retransform-Classes" : true
-        attributes "Premain-Class" : "com.gt.perf.bb.agent.AgentLoader"
-        attributes "Main-Class" : "com.gt.main.ClassUnderTest"
+        attributes "Can-Redefine-Classes": true
+        attributes "Can-Retransform-Classes": true
+        attributes "Premain-Class": "com.gt.perf.bb.agent.AgentLoader"
+        attributes "Main-Class": "com.gt.main.ClassUnderTest"
     }
 }
 
-plugins {
-    id("maven-publish")
+static def fetchVersion() {
+    def command = "git describe --tags `git rev-list --tags --max-count=1` | tr \"-\" \" \" | awk '{print \$2}'"
+    return ["bash", "-c", command].execute().text.trim()
 }
 
 publishing {
+    publications {
+        shadow(MavenPublication) { publication ->
+            version = fetchVersion()
+            project.shadow.component(publication)
+
+        }
+    }
     repositories {
         maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/Tyagi-Gaurav/jperf")
             credentials {
-                username = loadProperty("gpr.user") ?: System.getenv("USERNAME")
+                username = loadProperty("github.user") ?: System.getenv("USERNAME")
                 password = loadProperty("github.token") ?: System.getenv("TOKEN")
             }
-        }
-    }
-    publications {
-        gpr(MavenPublication) {
-            groupId = 'com.gt'
-            artifactId = 'jperf'
-            version = scmVersion.version
-
-            from(components.java)
         }
     }
 }
 
 release.dependsOn("loadGitHubToken")
 
-task loadGitHubToken << {
+task loadGitHubToken {
     scmVersion.repository.customUsername = loadProperty("github.token")
 }
 
-task loadProperty(propertyName : String) {
+String loadProperty(String propertyName) {
     Properties properties = new Properties()
-    File propertiesFile = new File(System.getProperty("user.home")  + '/keys/all_keys')
+    File propertiesFile = new File(System.getProperty("user.home") + '/keys/all_keys')
     propertiesFile.withInputStream {
         properties.load(it)
     }
 
     byte[] decoded = properties."$propertyName".decodeBase64()
     return new String(decoded)
+}
+
+def getVersionName = { ->
+    def hashStdOut = new ByteArrayOutputStream()
+    exec {
+        commandLine "git", "rev-parse", "--short", "HEAD"
+        standardOutput = hashStdOut
+    }
+
+    def buildNumberStdOut = new ByteArrayOutputStream()
+    exec {
+        commandLine 'echo', "$BUILD_NUMBER"
+        standardOutput = buildNumberStdOut
+    }
+    return buildNumberStdOut.toString().trim() + '-' + hashStdOut.toString().trim()
 }

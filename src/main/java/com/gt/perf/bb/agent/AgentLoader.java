@@ -24,17 +24,15 @@ public class AgentLoader {
 
         for (int i = 1; i < split.length; i++) {
             System.out.println("Adding " + split[i]);
-            matchingPackages = matchingPackages.and(ElementMatchers.nameStartsWith(split[i]));
+            matchingPackages = matchingPackages.or(ElementMatchers.nameStartsWith(split[i]));
         }
+
+        System.out.println(matchingPackages);
 
         new AgentBuilder.Default()
                 .with(new AgentBuilder.InitializationStrategy.SelfInjection.Eager())
-                .with(AgentBuilder.Listener.StreamWriting.toSystemError())
-                .type(not(
-                        nameContains("ClassRecorder")
-                                .or(nameStartsWith("java")))
-                        .and(matchingPackages)
-                )
+                //.with(AgentBuilder.Listener.StreamWriting.toSystemError())
+                .type(matchingPackages)
                 .transform((builder, typeDescription, classLoader, module) -> builder
                         .method(not(isConstructor()
                                 .and(isStatic())))

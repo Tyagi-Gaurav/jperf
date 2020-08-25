@@ -16,6 +16,7 @@ public class ClassRecorder {
     private static Map<String, MethodRecorderMetaData> methodRecorderMetaDataMap = new HashMap<>();
 
     public static void addCallDuration(String method, long duration) {
+        //System.out.println("Add call duration called.");
         MethodRecorderMetaData methodRecorderMetaData =
                 methodRecorderMetaDataMap.getOrDefault(method, new MethodRecorderMetaData());
         methodRecorderMetaData.addCallDuration(duration);
@@ -23,6 +24,7 @@ public class ClassRecorder {
     }
 
     public static void printReport() {
+        System.out.println("Printing report at the end.." + methodRecorderMetaDataMap.size());
         for (Map.Entry<String, MethodRecorderMetaData> entry : methodRecorderMetaDataMap.entrySet()) {
             System.out.println(String.format("Method: %s, details: %s", entry.getKey(), entry.getValue()));
         }

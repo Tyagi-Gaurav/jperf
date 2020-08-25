@@ -16,7 +16,7 @@ public class TimingInterceptor {
         try {
             return callable.call();
         } finally {
-            System.out.println("Adding call duration");
+            //System.out.println("Adding call duration");
             ClassRecorder.addCallDuration(method.getName(), System.currentTimeMillis() - start);
         }
 
